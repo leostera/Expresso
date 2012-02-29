@@ -1,0 +1,3 @@
+watch: Yes
+files:
+- tests/assets/folder/*.coffee

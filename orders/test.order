@@ -1,0 +1,4 @@
+watch: Yes
+files:
+- tests/assets/file.coffee
+join: joint
