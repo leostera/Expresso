@@ -52,10 +52,20 @@ So far I just included the minimal necessary stuff for me to use Expresso, that 
 
 Create your own .order files into a "orders" folder in your project root, and copy expresso also to your project root. Simply run "python expresso.py" and it will automagically load all the orders in your orders folder.
 
+### Note
+
+It requires the YAML package. Do:
+
+```
+pip install PyYAML
+```
+
+And you'll be ready to go.
+
 ### Tests
 
-I need to make autodeleting of js files after each test in a tearDown, but so far you can perform the testing and see if everything is working ok in your system by running run_tests.py with "python run_tests.py". After each run delete all the js files under the tests tree.
+I need to make autodeleting of js files after each test in a tearDown, but so far you can perform the testing and see if everything is working ok in your system by running run_tests.py with "python run_tests.py". After each run delete all the js files under the tests tree if you want to re-run or something.
 
 ## Bakery
 
-This project will be included into Bakery as a continuous building tool.
+This project will be included into Bakery after each stable release.
