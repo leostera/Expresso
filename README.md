@@ -15,8 +15,10 @@ deliver: tests/assets/delivery
 ```
 
 Turns into a one-time run of the following commands:
+
 ```
 coffee -l -o tests/assets/delivery -c tests/assets/folder/*.coffee
+
 coffee -l -o tests/assets/delivery -c tests/assets/folder/file.coffee
 ```
 
@@ -32,6 +34,7 @@ join: joint
 ```
 
 Turns into a watcher that joins all the coffee files in that directory into one exported js file named joint in the same directory.
+
 ```
 coffee -lw --join joint -c tests/assets/folder/*.coffee
 ```
