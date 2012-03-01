@@ -1,4 +1,4 @@
 watch: Yes
 files:
 - tests/assets/file.coffee
-join: joint
+join: joint.js
