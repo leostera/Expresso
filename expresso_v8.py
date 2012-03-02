@@ -102,15 +102,18 @@ def get_src(filepath):
         return file_d.read()
 
             
-def save(content=None, dest=None):
+def save(content=None, dest=None, srcfile=None, only_if_new=False):
     "Force saving a compiled file."
     if not os.path.exists(os.path.dirname(dest)):
         os.makedirs(os.path.dirname(dest))
-    with open(dest, "w+") as file_d:
-        file_d.write(str(content))
-        file_d.flush()
-        os.fsync(file_d)
-        print "%s - compiled %s" % (time.strftime('%X'), dest)
+
+    if only_if_new and os.stat(srcfile).st_mtime > os.stat(dest).st_mtime or\
+        not only_if_new:
+        with open(dest, "w+") as file_d:
+            file_d.write(str(content))
+            file_d.flush()
+            os.fsync(file_d)
+            print "%s - compiled %s" % (time.strftime('%X'), dest)
 
 
 class Cart:
@@ -203,7 +206,7 @@ class Cart:
                 print "Error compiling: %s" % str(exception)
             return compiled_src
 
-    def build(self):
+    def build(self, only_changed=False):
         "Build the order based on it's configuration"
         if self.done:
             return
@@ -226,7 +229,9 @@ class Cart:
                 for file_d in self.order.get('files'):
                     save(
                         self.compile( get_src(file_d) ), 
-                        change_ext(file_d)
+                        change_ext(file_d),
+                        srcfile=file_d,
+                        only_if_new=only_changed
                         )                
 
         else:
@@ -243,7 +248,9 @@ class Cart:
                 for file_d in self.order.get('files'):
                     save(
                         self.compile( get_src(file_d) ), 
-                        self._deliver_path(file_d)
+                        self._deliver_path(file_d),
+                        srcfile=file_d,
+                        only_if_new=only_changed
                         )
 
         self.done = True
@@ -273,7 +280,7 @@ class Cart:
                 endpath_mtime = 0
 
             if endpath_mtime < filepath_mtime or not os.path.exists(endpath):
-                self.build()
+                self.build(only_changed=True)
 
         self.done = False
     
