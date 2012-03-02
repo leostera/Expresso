@@ -12,7 +12,6 @@ import optparse
 from yaml import load
 import PyV8
 
-
 VERSION = (0, 2, 1)
 
 class NoCodeToCompile(Exception):
@@ -139,15 +138,36 @@ class Cart:
             if self.order.get('files') is None:
                 raise ShouldHaveFilesError()
             else:
+                newfiles = []
                 for filepath in self.order.get('files'):
-                    if os.path.splitext(filepath)[0].endswith("*"):
-                        for newfiles in os.listdir(os.path.split(filepath)[0]):
-                            if newfiles.endswith(".coffee"):
-                                self.order.get('files').append("%s/%s" %
-                                    (os.path.split(filepath)[0], newfiles)
-                                    )
-                                print "Added %s" % newfiles
+                    if os.path.splitext(filepath)[0].endswith("/**"):
+                        # list all dirs
+                        # and parse all files inside all those dirs
+                        for folder in os.listdir(os.path.split(filepath)[0]):
+                            folder = os.path.split(filepath)[0] + '/' + folder
+                            for newfile in os.listdir(folder):
+                                if newfile.endswith(".coffee"):
+                                    newfiles.append("%s/%s" %
+                                        (folder, newfile)
+                                        )
+                                    print "\tAdded %s/%s" % (folder,newfile)                            
+
+                        print "\tInstead of %s" % filepath
                         self.order.get('files').remove(filepath)
+
+                    elif os.path.splitext(filepath)[0].endswith("/*"):
+                        self.order.get('files').remove(filepath)
+                        for newfile in os.listdir(os.path.split(filepath)[0]):
+                            if newfile.endswith(".coffee"):
+                                    newfiles.append("%s/%s" %
+                                        (os.path.split(filepath)[0], newfile)
+                                        )
+                                    print "\tAdded %s" % newfile
+                        print "\tInstead of %s" % filepath
+
+                for newfile in newfiles:
+                    self.order.get('files').append(newfile)
+
         else:
             self.order = {}
             self.loaded = False

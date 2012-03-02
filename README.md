@@ -29,11 +29,11 @@ This other also really readable YAML file
 ```
 watch: Yes
 files:
-- tests/assets/folder/*.coffee
+- tests/assets/folder/**
 join: joint
 ```
 
-Turns into a watcher that joins all the coffee files in that directory into one exported js file named joint in the same directory.
+Turns into a watcher that joins all the coffee files in that directory (and subdirectories) into one exported js file named joint in the same directory.
 
 
 ### Order files
@@ -65,7 +65,7 @@ Install your "platforms PyV8":http://code.google.com/p/pyv8/downloads/list and y
 
 I need to make autodeleting of js files after each test in a tearDown, but so far you can perform the testing and see if everything is working ok in your system by running run_tests.py with "python run_tests.py". After each run delete all the js files under the tests tree if you want to re-run or something.
 
-#### PyLint
+### PyLint
 
 I lint the code as much as I can, you can check that yourself.
 
