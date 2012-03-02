@@ -1,3 +1,5 @@
 watch: Yes
 files:
 - tests/assets/folder/*.coffee
+deliver: tests/assets/delivery
+join: joined.js

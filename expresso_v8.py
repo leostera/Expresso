@@ -1,22 +1,19 @@
 """
-Expresso is a little Python continuous builder for CoffeeScript using PyV8.
+Expresso is a little Python continuous builder for CoffeeScript for Pythonistas,
+built using PyV8 and PyYAML.
 """
 
-# The os module is used for retrieving files
 import os
-# multiprocessing.Process is used for watchers
-import multiprocessing
-# time for showing compile time
+import sys
 import time
-# to load the latest coffee-script compiler
 import urllib
+import optparse
 
-
-# yaml is used to load the orders from files
 from yaml import load
-# import the Google V8 JavaScript Engine
 import PyV8
 
+
+VERSION = (0, 2, 1)
 
 class NoCodeToCompile(Exception):
     "Exception to arise when there is no code to be compiled."
@@ -36,6 +33,7 @@ class V8CoffeeCompiler:
     v8_compiler = None
     compiled    = {}
     url         = None
+    coffee_src  = "coffee-script.js" #same directory
 
     def __init__(self, latest=False):        
         """
@@ -49,15 +47,19 @@ class V8CoffeeCompiler:
                                 urllib.urlopen(self.url).read()
                                 )
         else:
-            coffee_script_file_d = os.open("coffee-script.js", os.O_RDONLY)            
-            self.v8_compiler = self.v8_context.eval(
-                                    os.read(coffee_script_file_d, 1000000000)
-                                    )
+            self.v8_context.eval( urllib.urlopen(self.coffee_src).read() )
+            self.v8_compiler = self.v8_context.locals.CoffeeScript
+
+    def __del__(self):
+        if self.v8_context:
+            self.v8_context.leave()
 
     def compile(self, coffee=None):
         "Returns CoffeeScript code compiled to JavaScript"
         if coffee is None:
             raise NoCodeToCompile()
+        if self.v8_compiler is None:
+            raise NoCompilerError()
         return self.v8_compiler.compile(coffee)
 
     def get_version(self):
@@ -108,7 +110,7 @@ def save(content=None, dest=None):
     with open(dest, "w+") as file_d:
         file_d.write(str(content))
         file_d.flush()
-        os.fsync()
+        os.fsync(file_d)
         print "%s - compiled %s" % (time.strftime('%X'), dest)
 
 
@@ -121,10 +123,12 @@ class Cart:
     order       = {}
     loaded      = False
     compiler    = None
+    done        = False
 
     def __init__(self):
         self.order  = {}
         self.loaded = False
+        self.done   = False
         self.compiler = V8CoffeeCompiler()
 
     def load(self, stream=None):
@@ -132,6 +136,18 @@ class Cart:
         if stream:
             self.order = load(stream)
             self.loaded = True
+            if self.order.get('files') is None:
+                raise ShouldHaveFilesError()
+            else:
+                for filepath in self.order.get('files'):
+                    if os.path.splitext(filepath)[0].endswith("*"):
+                        for newfiles in os.listdir(os.path.split(filepath)[0]):
+                            if newfiles.endswith(".coffee"):
+                                self.order.get('files').append("%s/%s" %
+                                    (os.path.split(filepath)[0], newfiles)
+                                    )
+                                print "Added %s" % newfiles
+                        self.order.get('files').remove(filepath)
         else:
             self.order = {}
             self.loaded = False
@@ -147,15 +163,14 @@ class Cart:
         "Runs the cart"
         if self.order is {}:
             raise CartIsEmptyError()
-        elif self.order.get('files') is None:
-            raise ShouldHaveFilesError()
+        elif self.compiler is None:
+            raise NoCompilerError()
         else:
-
-            if self.order.get('watch', False) is False:
-                self.watch()
+            if self.order.get("watch"):
+                self.watch()                
             else:
-                self.build()            
-
+                self.build()
+                                
     def compile(self, src):        
         "Get the compiled source code using the compiler at self.compiler"
         if self.compiler is None:
@@ -170,6 +185,8 @@ class Cart:
 
     def build(self):
         "Build the order based on it's configuration"
+        if self.done:
+            return
         # if no delivery specified
         if self.order.get('deliver', None) is None:
             # but files should be joined
@@ -185,12 +202,12 @@ class Cart:
                         )
                     )
             else:
-                # compile each file into its folder
+                # compile each file into its folder                
                 for file_d in self.order.get('files'):
                     save(
                         self.compile( get_src(file_d) ), 
                         change_ext(file_d)
-                        )
+                        )                
 
         else:
             if self.order.get('join'):
@@ -209,39 +226,125 @@ class Cart:
                         self._deliver_path(file_d)
                         )
 
+        self.done = True
+
     def watch(self):
         "Check for changes in the filepaths and re build if necessary"
         # do the watching here, as this is the process we will be threading
-        process = multiprocessing.Process(kwargs={'shell':self.order.get('id')})
-        process.start()
-        process.join()
+        for filepath in self.order.get('files'):
+            filepath_mtime = os.stat(filepath).st_mtime
+            if self.order.get('deliver', None) is None:
+                if self.order.get('join'): 
+                    endpath = os.path.join(
+                                os.path.commonprefix(self.order.get('files')), 
+                                self.order.get('join')
+                                )
+                else:
+                    endpath = change_ext(filepath)
+            else:
+                if self.order.get('join'):
+                    endpath = self._deliver_path(self.order.get('deliver'))
+                else:
+                    endpath = self._deliver_path(filepath)
+                    
+            if os.path.exists(endpath):
+                endpath_mtime = os.stat( endpath ).st_mtime
+            else:
+                endpath_mtime = 0
+
+            if endpath_mtime < filepath_mtime or not os.path.exists(endpath):
+                self.build()
+
+        self.done = False
     
     def _deliver_path(self, filepath):
-        "Get the delivery path for the compiled file"
-        # Get the actual filename
-        filename = os.path.splitext(os.path.split(filepath)[1])[0]
+        "Get the delivery path for the compiled file"        
+        if self.order.get('join'):
+            # Use the join-files name
+            filename = self.order.get('join')
+        else:
+            # Get the actual filename
+            filename = os.path.splitext(os.path.split(filepath)[1])[0]
+            filename += ".js"
+            
         # Return just the joined delivery path with the filename.js
         return os.path.join( "%s" % self.order.get('deliver'), 
-            "%s.js" % filename)
+                            "%s" % filename)
 
     def _join(self):
         "Returns the joined source for all given files in an order."
-        srcs_joined = None
+        srcs_joined = ""
         # get all the file descriptors
-        file_ds = [os.open(f, os.O_RDONLY) for f
-                in self.order.get('files')]
-        if file_ds:
-            # get all the sources
-            srcs = [ os.read(file_d) for file_d in file_ds ]
-            # and join them
-            
-            for src in srcs: # here
-                srcs_joined += src + "\n" 
-
-        for file_d in file_ds:
-            file_d.close()
+        for filepath in self.order.get('files'):
+            srcs_joined += get_src(filepath) + "\n"
 
         return srcs_joined
+
+class EmptyCartsError(Exception):
+    """
+    Arises when there is no carts and the run method from the ExpressoMachine
+    is called.
+    """
+    pass
+
+class ExpressoMachine:
+    """
+    Handle multiple carts
+    """
+
+    carts = []
+
+    def __init__(self, folder="orders"):
+        "Init carts as a blank list"
+        self.load(folder)
+        self.version = VERSION
+
+    def run(self, check_interval=2):
+        "Run the carts"
+        if self.carts is []:
+            raise EmptyCartsError()
+        else:
+            while True:
+                try:
+                    should_finish = True
+
+                    for cart in self.carts:
+                        cart.run()
+
+                        if not cart.done:
+                            should_finish = False
+
+                    if should_finish:
+                        sys.exit(0)
+
+                    time.sleep(check_interval)
+                    
+                except KeyboardInterrupt:
+                    self.kill()
+
+    def kill(self):
+        "Finish it."
+        print "Thanks for using Expresso v%s.%s.%s!" % self.version
+        print "@author Leandro Ostera"
+        print "@email  leostera @ gmail.com"
+        print "@git    https://github.com/leostera/Expresso"
+        sys.exit(0)
+
+    def load(self, folder="orders"):
+        "Looks inside a folder for order files and loads them."
+        orders = [order for order in os.listdir(folder)\
+                    if order.endswith(".order") ]
+
+        for order in orders:
+            cart = Cart()
+            path = "%s/%s" % (folder, order)
+
+            if os.path.getsize(path) is 0 :
+                continue
+            print "Loading...orders/%s" % order
+            cart.load( os.read( os.open(path, os.O_RDONLY) , 100000) )
+            self.carts.append(cart)
+
 
 ################################################################################
 #
@@ -251,16 +354,26 @@ class Cart:
 
 if __name__ == "__main__":
 
-    print "I'll look for files in your 'orders' folder."
+    OPARSER = optparse.OptionParser(
+    description="A little continuous builder for CoffeeScript for Pytonistas.",
+    usage='Usage: %prog <orders_folder>',
+    version = "%prog 0.2.1",
+    epilog="Feel free to contribute at https://github.com/leostera/Expresso"
+    )
 
-    ORDERS = os.listdir('orders')    
-    CARTS = []
+    OPARSER.add_option("-f", "--folder", dest="folder",
+                      help="look for .order files inside FOLDER")
 
-    for ORDER in ORDERS:
-        CART = Cart()
-        FILEDESCRIPTOR = os.open("orders/%s" % ORDER, os.O_RDONLY)
-        CART.load( os.read(FILEDESCRIPTOR, 100000) )
-        CARTS.append(CART)
+    (OPTIONS, ARGS) = OPARSER.parse_args()
 
-    for CART in CARTS:
-        CART.run()
+    EXPRESSO_MACHINE = None
+    
+    if len(ARGS) == 0:
+        EXPRESSO_MACHINE = ExpressoMachine()
+    elif OPTIONS.directory:
+        EXPRESSO_MACHINE = ExpressoMachine(OPTIONS.directory)
+
+    if EXPRESSO_MACHINE:
+        EXPRESSO_MACHINE.run()
+    else:
+        print "Holy BUGS Batman!"

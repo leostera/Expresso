@@ -1,6 +1,6 @@
 import unittest
 
-from expresso import Cart
+from expresso_v8 import Cart
 
 class TestYAMLToCart(unittest.TestCase):
 
@@ -24,14 +24,14 @@ class TestYAMLToCart(unittest.TestCase):
         """
         Assures the cart has been loaded.
         """
-        self.assertTrue(self.cart.get_loaded())
+        self.assertTrue(self.cart.loaded)
 
     def test_loaded_is_false_when_not_loaded(self):
         """
         Assures the cart hasn't been loaded.
         """
         self.cart = Cart()
-        self.assertFalse(self.cart.get_loaded())
+        self.assertFalse(self.cart.loaded)
 
     def test_parsed(self):
         """
@@ -47,7 +47,7 @@ class TestYAMLToCart(unittest.TestCase):
           "lint": False
           }
 
-        self.assertEqual(self.cart.get_order(),order)
+        self.assertEqual(self.cart.order,order)
 
 ###
 # The tricky part is not the YAML.

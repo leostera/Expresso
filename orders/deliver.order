@@ -1,4 +1,0 @@
-watch: No
-files:
-- tests/assets/folder/*.coffee
-deliver: tests/assets/delivery

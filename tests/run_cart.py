@@ -1,31 +1,20 @@
-import unittest2
+import unittest
 
 import os
 import time
 import subprocess
 
-from expresso import Cart, ShouldHaveFilesException
+from expresso_v8 import NoCodeToCompile, CompileException, CartIsEmptyError,\
+                        ShouldHaveFilesError, NullStreamError, NoCompilerError,\
+                        Cart, V8CoffeeCompiler
 
-class TestRunCart(unittest2.TestCase):
+class TestRunCart(unittest.TestCase):
 
     def setUp(self):
         self.cart = Cart()
+        self.compiler = V8CoffeeCompiler()
 
-        self.cart.load("""
-          name: "Sample"
-          files:
-          - "assets/file.coffee"
-          - "assets/folder/*"
-          join: No
-          """)
-
-    def test_run_once(self):
-        """
-        Assure the cart has been ran 1 time.
-        """
-        self.assertEqual(self.cart.get_run_times(),1)
-
-    def test_run_forever(self):
+    def test_run(self):
         """
         Assures the cart will run forever, since the watch flag
         has been passed by the order file.
@@ -34,8 +23,8 @@ class TestRunCart(unittest2.TestCase):
           watch: Yes
           name: "Sample"
           files:
-          - "assets/file.coffee"
-          - "assets/folder/*"
+          - "tests/assets/file.coffee"
+          - "tests/assets/folder/*"
           deliver: "assets/delivery"
           join: No
           """)
@@ -47,16 +36,16 @@ class TestRunCart(unittest2.TestCase):
         Assures the cart will run forever, since the watch flag
         has been passed by the order file.
         """
-        with self.assertRaises(ShouldHaveFilesException):
+        with self.assertRaises(ShouldHaveFilesError):
             self.cart.load("""                      
                       name: "Sample"           
                       deliver:
-                      - "assets/delivery"
+                      - "tests/assets/delivery"
                       join: No
                       """)
             self.cart.run()
 
-    def test_compiles_files(self):
+    def test_compile_file(self):
         """
         Assures the files listed under files get compiled.
         """
@@ -128,7 +117,7 @@ class TestRunCart(unittest2.TestCase):
           - tests/assets/folder/*.coffee
           - tests/assets/file.coffee
           deliver: tests/assets
-          join: joint
+          join: joint.js
           """)
 
         self.cart.run()
@@ -136,6 +125,7 @@ class TestRunCart(unittest2.TestCase):
 
         self.assertTrue ( os.path.exists("tests/assets/joint.js") )
 
+# this is a bad test.
     def test_watches(self):
         """
         Assures the files listed are watched.
@@ -159,4 +149,3 @@ class TestRunCart(unittest2.TestCase):
         self.assertTrue ( os.path.exists("tests/assets/watch/file.js") )
         self.assertTrue ( os.path.exists("tests/assets/watch/1.js") )
         self.assertTrue ( os.path.exists("tests/assets/watch/2.js") )
-
