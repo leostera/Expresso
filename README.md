@@ -59,7 +59,7 @@ It depends on PyYAML and PyV8. Do:
 pip install PyYAML
 ```
 
-Install your "platforms PyV8":http://code.google.com/p/pyv8/downloads/list and you'll be ready to go.
+Install your platforms PyV8 from here http://code.google.com/p/pyv8/downloads/list, and you'll be ready to go.
 
 ### Tests
 
