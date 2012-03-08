@@ -9,8 +9,18 @@ import time
 import urllib
 import optparse
 
-from yaml import load
-import PyV8
+try:
+    from yaml import load
+except ImportError:
+    print """Please install PyYAML.
+    It can be as easy as pip install PyYAML or easy_install PyYAML"""
+    sys.exit(1)
+
+try:
+    import PyV8
+except ImportError:
+    print """Please install PyV8.
+    You can download it from http://code.google.com/p/pyv8/downloads/list"""
 
 VERSION = (0, 2, 1)
 
@@ -59,7 +69,10 @@ class V8CoffeeCompiler:
             raise NoCodeToCompile()
         if self.v8_compiler is None:
             raise NoCompilerError()
-        return self.v8_compiler.compile(coffee)
+        try:
+            return self.v8_compiler.compile(coffee)
+        except:
+            pass
 
     def get_version(self):
         "In this case, version is 1.2"
@@ -107,8 +120,15 @@ def save(content=None, dest=None, srcfile=None, only_if_new=False):
     if not os.path.exists(os.path.dirname(dest)):
         os.makedirs(os.path.dirname(dest))
 
+    if not os.path.exists(dest):
+        with open(dest, "w+") as file_d:
+            file_d.write(str(content))
+            file_d.flush()
+            os.fsync(file_d)
+            print "%s - compiled %s" % (time.strftime('%X'), dest)
+
     if only_if_new and os.stat(srcfile).st_mtime > os.stat(dest).st_mtime or\
-        not only_if_new:
+    not only_if_new:
         with open(dest, "w+") as file_d:
             file_d.write(str(content))
             file_d.flush()
@@ -153,7 +173,7 @@ class Cart:
                                     newfiles.append("%s/%s" %
                                         (folder, newfile)
                                         )
-                                    print "\tAdded %s/%s" % (folder,newfile)                            
+                                    print "\tAdded %s/%s" % (folder, newfile)                            
 
                         print "\tInstead of %s" % filepath
                         self.order.get('files').remove(filepath)
@@ -162,10 +182,10 @@ class Cart:
                         self.order.get('files').remove(filepath)
                         for newfile in os.listdir(os.path.split(filepath)[0]):
                             if newfile.endswith(".coffee"):
-                                    newfiles.append("%s/%s" %
-                                        (os.path.split(filepath)[0], newfile)
-                                        )
-                                    print "\tAdded %s" % newfile
+                                newfiles.append("%s/%s" %
+                                (os.path.split(filepath)[0], newfile)
+                                )
+                                print "\tAdded %s" % newfile
                         print "\tInstead of %s" % filepath
 
                 for newfile in newfiles:
@@ -259,28 +279,32 @@ class Cart:
         "Check for changes in the filepaths and re build if necessary"
         # do the watching here, as this is the process we will be threading
         for filepath in self.order.get('files'):
-            filepath_mtime = os.stat(filepath).st_mtime
-            if self.order.get('deliver', None) is None:
-                if self.order.get('join'): 
-                    endpath = os.path.join(
-                                os.path.commonprefix(self.order.get('files')), 
-                                self.order.get('join')
-                                )
+            try:
+                filepath_mtime = os.stat(filepath).st_mtime
+                if self.order.get('deliver', None) is None:
+                    if self.order.get('join'): 
+                        endpath = os.path.join(
+                                    os.path.commonprefix(self.order.get('files')), 
+                                    self.order.get('join')
+                                    )
+                    else:
+                        endpath = change_ext(filepath)
                 else:
-                    endpath = change_ext(filepath)
-            else:
-                if self.order.get('join'):
-                    endpath = self._deliver_path(self.order.get('deliver'))
+                    if self.order.get('join'):
+                        endpath = self._deliver_path(self.order.get('deliver'))
+                    else:
+                        endpath = self._deliver_path(filepath)
+                        
+                if os.path.exists(endpath):
+                    endpath_mtime = os.stat( endpath ).st_mtime
                 else:
-                    endpath = self._deliver_path(filepath)
-                    
-            if os.path.exists(endpath):
-                endpath_mtime = os.stat( endpath ).st_mtime
-            else:
-                endpath_mtime = 0
+                    endpath_mtime = 0
 
-            if endpath_mtime < filepath_mtime or not os.path.exists(endpath):
-                self.build(only_changed=True)
+                if endpath_mtime < filepath_mtime or not os.path.exists(endpath):
+                    self.build(only_changed=True)
+                    
+            except Exception:
+                pass
 
         self.done = False
     

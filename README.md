@@ -65,10 +65,6 @@ Install your platforms PyV8 from here http://code.google.com/p/pyv8/downloads/li
 
 I need to make autodeleting of js files after each test in a tearDown, but so far you can perform the testing and see if everything is working ok in your system by running run_tests.py with "python run_tests.py". After each run delete all the js files under the tests tree if you want to re-run or something.
 
-### PyLint
+## NodeJS version
 
-I lint the code as much as I can, you can check that yourself.
-
-## Bakery
-
-This project will be included into Bakery after each stable release.
+I also included here the first version I used, based on Node.js, for those who already have it installed and running and do not mind using it. For the rest of us, there's Expresso V8.
