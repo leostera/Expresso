@@ -68,3 +68,5 @@ I need to make autodeleting of js files after each test in a tearDown, but so fa
 ## NodeJS version
 
 I also included here the first version I used, based on Node.js, for those who already have it installed and running and do not mind using it. For the rest of us, there's Expresso V8.
+
+Copyright (C) 2112 Leandro Ostera

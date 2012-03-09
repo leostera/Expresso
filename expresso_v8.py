@@ -22,7 +22,7 @@ except ImportError:
     print """Please install PyV8.
     You can download it from http://code.google.com/p/pyv8/downloads/list"""
 
-VERSION = (0, 2, 1)
+VERSION = (0, 2, 3)
 
 class NoCodeToCompile(Exception):
     "Exception to arise when there is no code to be compiled."
@@ -143,6 +143,7 @@ class Cart:
     """
 
     order       = {}
+    raw         = ""
     loaded      = False
     compiler    = None
     done        = False
@@ -153,9 +154,13 @@ class Cart:
         self.done   = False
         self.compiler = V8CoffeeCompiler()
 
-    def load(self, stream=None):
+    def reload(self,silent=True):
+        self.load( self.raw, silent)
+
+    def load(self, stream=None, silent=False):
         "Loads a stream and parses it."
         if stream:
+            self.raw = stream
             self.order = load(stream)
             self.loaded = True
             if self.order.get('files') is None:
@@ -173,9 +178,10 @@ class Cart:
                                     newfiles.append("%s/%s" %
                                         (folder, newfile)
                                         )
-                                    print "\tAdded %s/%s" % (folder, newfile)                            
-
-                        print "\tInstead of %s" % filepath
+                                    if not silent:
+                                        print "\tAdded %s/%s" % (folder, newfile)                            
+                        if not silent:
+                            print "\tInstead of %s" % filepath
                         self.order.get('files').remove(filepath)
 
                     elif os.path.splitext(filepath)[0].endswith("/*"):
@@ -185,8 +191,10 @@ class Cart:
                                 newfiles.append("%s/%s" %
                                 (os.path.split(filepath)[0], newfile)
                                 )
-                                print "\tAdded %s" % newfile
-                        print "\tInstead of %s" % filepath
+                                if not silent:
+                                    print "\tAdded %s" % newfile
+                        if not silent:
+                            print "\tInstead of %s" % filepath
 
                 for newfile in newfiles:
                     self.order.get('files').append(newfile)
@@ -360,6 +368,7 @@ class ExpressoMachine:
                     should_finish = True
 
                     for cart in self.carts:
+                        cart.reload()
                         cart.run()
 
                         if not cart.done:
