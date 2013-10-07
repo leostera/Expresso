@@ -1,4 +1,5 @@
-## Expresso: CoffeeScript compiling for Pythonistas.
+# Expresso (discontinued)
+## CoffeeScript compiling for Pythonistas.
 
 This is a little continuous builder for CoffeeScript that uses standard Python modules and the excellents PyYAML and PyV8 to perform some little tasks described in *.order files that will make our development hours a joy.
 Feel free to fork, report issues, request features, watch, clone and -of course- use it!
